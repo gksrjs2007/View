@@ -1,0 +1,95 @@
+import requests #response 받기 위한 라이브러리
+import time
+import request
+import datetime #req_time 구하기 위한 라이브러리
+import json #json 포멧 데이터 라이브러리
+import cv2
+import base64 #base64 변환을 위한 라이브러리
+from collections import OrderedDict #배열에 변수 추가를 위한 orderedDict 함수 사용하기 위한 라이브러리
+from PIL import Image #Image 함수를 통한 이미지 크기 출력하는 라이브러리
+import numpy as np #배열 함수를 사용하기 위한 python 제공 기본 라이브러리
+import os
+
+# Sever_id 구하기
+def server_id():
+    return str(2)
+
+# channel_id 구하기
+def channel_id(channel_num):
+    return str(channel_num)
+
+# sever_id 구하기
+def req_id():
+    return str(0)
+
+# req_time 구하기
+def req_time():
+    d = datetime.datetime.now() #현재시간을 불러 오는 함수
+    date = d.strftime('%Y-%m-%d') #현재 시간의 년, 월, 일 출력
+    time = d.strftime('%X') #현재 시간 출력
+    t = date+'T'+time+'Z' #json 포멧에 맞춘 결과값을 string 형태로 변수에 저장
+    return t
+
+# def req_time2(date):
+
+
+# req_rect 구하기
+def req_rect(img):
+    img2 = np.array(img) #img를 배열 형태로 img2 배열에 저장
+    y = img2.shape[0]
+    x = img2.shape[1]
+    shape = [0, 0 ,x, y]
+    return str(shape) #나온 결과값을 string 형태로 반환
+
+# img를 base64로 변환하기 위한 with 문
+CCTV_listdir = os.listdir("D:/Users/cge/Desktop/CCTV/")
+channel_num = 0 #채널 번호 지정
+while(channel_num < 16):
+    CCTV_path = os.path.join("D:/Users/cge/Desktop/CCTV/",CCTV_listdir[channel_num])
+    channel_num = channel_num + 1 #다음 디렉토리 채널번호는 +1 된 채널
+    j = 0
+    while(j < 50):
+        Point_listdir = os.listdir(CCTV_path)
+        Point_path = os.path.join(CCTV_path, str(Point_listdir[j]))
+        j = j + 1
+        Date = os.path.basename(Point_path)[0:10]
+        # print(Date)
+        # year = Date[0:4]
+        # month = Date[5:7]
+        # day = Date[8:10]
+        # print(req_time())
+
+
+        with open(Point_path, 'rb') as img:
+            base64_string = base64.b64encode(img.read()) #read()함수를 통하여 이미지를 불러오고 이를 b64encode로 변환
+            img = Image.open(Point_path) #아래 img 사이즈 측정을 위한 image 를 img 변수에 저장
+
+        file_data = OrderedDict()
+        response_data = OrderedDict()
+
+        file_data["server_id"] = server_id()
+        file_data["channel_id"] = channel_id(7)
+        file_data["req_id"] = req_id()
+        file_data["req_time"] = req_time()
+        file_data["req_rect"] = req_rect(img)
+        file_data["req_image"] = (str(base64_string)[2:]) #변환한 base64 형태를 2번째 결과값 부터 넣어줌 왜냐하면 앞에 'b 이 두글자가 같이 변환되어 출력됌 (이유는 binaray 형태임을 표시한 것이라 생각됌)
+
+        json_data_statistic = json.dumps(file_data, ensure_ascii=False, indent="\t") #이후 file_data 배열을 json format으로 변환
+
+        print(json_data_statistic) #분석 서버에 보낼 json 데이터를 출력
+
+        response_statistic = requests.post('http://42.29.8.133:7979/home/adminuser/Desktop/heavy_server', data=json_data_statistic) #requests 함수를 통해 json_data를 분석서버에 전송
+
+        print(response_statistic.json()) #분석서버로 부터 받은 응답의 payload를 json 포멧으로 출력
+        response_data = response_statistic.json() #payload의 내용을 response_data에 저장
+
+        response_data["req_image"] = (str(base64_string)[2:])
+
+        json_data_view = json.dumps(response_data, ensure_ascii=False, indent="\t")
+        print(json_data_view)
+
+        response2 = requests.post('http://42.29.8.133:12080/kepco/ml_recv', data=json_data_view)
+
+        print(response2 ,response2.headers, response2.content)
+
+        time.sleep(5)
