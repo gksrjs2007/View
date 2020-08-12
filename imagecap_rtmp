@@ -1,0 +1,24 @@
+import cv2
+import datetime
+import time
+
+url = 'rtmp://175.193.202.193/sd1/mp4:ch5.stream' #당곡사거리
+cap = cv2.VideoCapture(url)
+
+url1 = 'rtmp://175.193.202.193/sd2/mp4:ch15.stream' #노량진삼거리
+cap1 = cv2.VideoCapture(url1)
+
+count = 1
+
+while True:
+    ret, frame = cap.read()
+    ret1, frame1 = cap1.read()
+
+    cv2.imwrite("D:/Users/cge/Desktop/CCTV1/a/%s_%d.jpg" %(str(datetime.datetime.now())[0:10], count), frame)
+    cv2.imwrite("D:/Users/cge/Desktop/CCTV1/b/%s_%d.jpg" %(str(datetime.datetime.now())[0:10], count), frame1)
+
+    count +=1
+
+    time.sleep(3600)
+
+cap.release()
